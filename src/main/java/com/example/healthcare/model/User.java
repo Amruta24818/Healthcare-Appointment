@@ -1,10 +1,15 @@
 package com.example.healthcare.model;
 
 import jakarta.persistence.*;
+import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
+
 import java.math.BigDecimal;
 import java.sql.Timestamp;
 
 @Entity
+@Data
 @Table(name = "\"user\"")
 public class User {
     @Id
@@ -25,4 +30,5 @@ public class User {
     private Boolean isDeleted;
     private Timestamp createdAt;
     private Timestamp updatedAt;
+
 }
