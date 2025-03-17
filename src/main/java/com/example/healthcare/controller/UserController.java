@@ -4,31 +4,36 @@ import com.example.healthcare.dto.LoginRequest;
 import com.example.healthcare.dto.LoginResponse;
 import com.example.healthcare.model.User;
 import com.example.healthcare.service.IUserService;
-import com.example.healthcare.utils.JwtUtils;
+import com.example.healthcare.service.UserDetailsServiceImpl;
+import com.example.healthcare.utils.JwtUtills;
+import com.example.healthcare.utils.PasswordManager;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.bind.annotation.*;
 
-import java.util.Base64;
+import java.util.List;
 
 @RestController
+@RequestMapping("/api")
 public class UserController {
 
     @Autowired
     private IUserService userService;
 
     @Autowired
-    private JwtUtils jwtUtil;
+    private AuthenticationManager authenticationManager;
 
     @Autowired
-    private AuthenticationManager authenticationManager;
+    private UserDetailsServiceImpl userDetailsServiceImpl;
+
+    @Autowired
+    private JwtUtills jwtUtil;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     @PostMapping("/register")
     public ResponseEntity<User> registerUser(@RequestBody User user) {
@@ -37,23 +42,28 @@ public class UserController {
 
     @PostMapping("/login")
     public ResponseEntity<?> authenticateUser(@RequestBody LoginRequest request) {
-        System.out.println("in authenticate user: " + request);
-
         User user = userService.findByEmail(request.getEmail());
-        Authentication authenticate = null;
-
-        try {
-            UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(
-                    request.getEmail(), Base64.getEncoder().encodeToString(request.getPassword().getBytes()));
-
-            authenticate = authenticationManager.authenticate(authenticationToken);
-
-        } catch (Exception e) {
-            throw new UsernameNotFoundException("Invalid email or password");
+        if (user == null) {
+            return ResponseEntity.status(401).body("Invalid email or password");
         }
 
-        return new ResponseEntity<>(new LoginResponse("success", user, jwtUtil.generateToken(user.getUserName())),
-                HttpStatus.OK);
+        String hashedInputPassword = PasswordManager.hashPassword(request.getPassword(), user.getSalt());
 
+        if (!hashedInputPassword.equals(user.getPasswordHash())) {
+            return ResponseEntity.status(401).body("Invalid email or password");
+        }
+
+        String token = jwtUtil.generateToken(user.getEmail(),user);
+
+//        return ResponseEntity.ok(new LoginResponse("success", user, token));
+//        return ResponseEntity.ok("ok");
+        return new ResponseEntity<>(new LoginResponse("success", token),
+                HttpStatus.OK);
+    }
+
+    @GetMapping("/getAllUsers")
+    public ResponseEntity<List<User>> getAllUsers() {
+        List<User> list = userService.getAllUsers();
+        return new ResponseEntity<>(list, HttpStatus.OK);
     }
 }
