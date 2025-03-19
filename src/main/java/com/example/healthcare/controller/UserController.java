@@ -8,8 +8,11 @@ import com.example.healthcare.service.UserDetailsServiceImpl;
 import com.example.healthcare.utils.JwtUtills;
 import com.example.healthcare.utils.PasswordManager;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
@@ -35,6 +38,16 @@ public class UserController {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private JavaMailSender emailSender;
+
+    @Value("${spring.mail.username}")
+    private String host;
+
+    public UserController(JwtUtills jwtUtil) {
+        this.jwtUtil = jwtUtil;
+    }
+
     @PostMapping("/register")
     public ResponseEntity<User> registerUser(@RequestBody User user) {
         return new ResponseEntity<>(userService.registerOrEditUser(user), HttpStatus.CREATED);
@@ -53,7 +66,8 @@ public class UserController {
             return ResponseEntity.status(401).body("Invalid email or password");
         }
 
-        String token = jwtUtil.generateToken(user.getEmail(),user);
+        String token = jwtUtil.generateToken(user.getEmail(), user);
+        System.out.println(user);
 
 //        return ResponseEntity.ok(new LoginResponse("success", user, token));
 //        return ResponseEntity.ok("ok");
@@ -65,5 +79,41 @@ public class UserController {
     public ResponseEntity<List<User>> getAllUsers() {
         List<User> list = userService.getAllUsers();
         return new ResponseEntity<>(list, HttpStatus.OK);
+    }
+
+    @GetMapping("/getotp/{email}")
+    public ResponseEntity<String> sendOTP(@PathVariable String email) {
+
+        return new ResponseEntity<String>(OTPEmail(email), HttpStatus.OK);
+    }
+
+    public String OTPEmail(String email) {
+        System.out.println("Sending Email.....");
+        String otp = "" + ((int) (Math.random() * 9000) * 100);
+        System.out.println("OTP: " + otp);
+        SimpleMailMessage mesg = new SimpleMailMessage();
+        mesg.setFrom(host);
+        mesg.setTo(email);
+        mesg.setSubject("Welcome to Healthcare");
+        mesg.setText("Hello,\nYour OTP for Login is  " + otp + "\n\n\nThanks and Regards,\nAdmin\nHealthcare");
+        emailSender.send(mesg);
+
+        System.out.println("success");
+        return otp;
+    }
+
+    @PutMapping("/editUser")
+    public ResponseEntity<User> editUser(@RequestBody User user) {
+//        String token = request.getHeader("Authorization");
+
+//        if (token != null && token.startsWith("Bearer ")) {
+//            token = token.substring(7);
+//            String userName = this.jwtUtil.extractUsername(token);
+//
+//            System.out.println(userName);
+//            User u = userService.findByUserName(userName);
+        User users = userService.editUser(user);
+//        }
+        return new ResponseEntity<>(user, HttpStatus.OK);
     }
 }

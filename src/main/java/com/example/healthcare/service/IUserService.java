@@ -10,4 +10,8 @@ public interface IUserService {
     User findByEmail(String email);
 
     List<User> getAllUsers();
+
+    User editUser(User user);
+
+    User findByUserName(String userName);
 }
