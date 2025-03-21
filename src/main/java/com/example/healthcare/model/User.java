@@ -10,9 +10,10 @@ import java.sql.Timestamp;
 
 @Entity
 @Data
-@Table(name = "\"user\"")
+@Table(name = "tb_user")
 public class User {
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private String id;
     @Column(name = "user_name")
     private String userName;
@@ -30,9 +31,20 @@ public class User {
     private Boolean isDeleted;
     private Timestamp createdAt;
     private Timestamp updatedAt;
-
+    @Version
+    private Integer version=0;
     public String getId() {
         return id;
+    }
+
+    public User(String userName, String email, String phone, String gender, BigDecimal weight, BigDecimal height, String bloodGroup) {
+        this.userName = userName;
+        this.email = email;
+        this.phone = phone;
+        this.gender = gender;
+        this.weight = weight;
+        this.height = height;
+        this.bloodGroup = bloodGroup;
     }
 
     public void setId(String id) {

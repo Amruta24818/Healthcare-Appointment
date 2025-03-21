@@ -2,11 +2,16 @@ package com.example.healthcare.controller;
 
 import com.example.healthcare.dto.LoginRequest;
 import com.example.healthcare.dto.LoginResponse;
+import com.example.healthcare.dto.MedicalHistoryDto;
+import com.example.healthcare.dto.UserDto;
+import com.example.healthcare.model.MedicalHistory;
 import com.example.healthcare.model.User;
+import com.example.healthcare.service.IMedicalService;
 import com.example.healthcare.service.IUserService;
 import com.example.healthcare.service.UserDetailsServiceImpl;
 import com.example.healthcare.utils.JwtUtills;
 import com.example.healthcare.utils.PasswordManager;
+import org.apache.tomcat.util.http.parser.Authorization;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -41,6 +46,9 @@ public class UserController {
     @Autowired
     private JavaMailSender emailSender;
 
+    @Autowired
+    private IMedicalService medicalService;
+
     @Value("${spring.mail.username}")
     private String host;
 
@@ -49,8 +57,8 @@ public class UserController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<User> registerUser(@RequestBody User user) {
-        return new ResponseEntity<>(userService.registerOrEditUser(user), HttpStatus.CREATED);
+    public ResponseEntity<User> registerUser(@RequestBody UserDto userDto) {
+        return new ResponseEntity<>(userService.registerOrEditUser(userDto), HttpStatus.CREATED);
     }
 
     @PostMapping("/login")
@@ -103,17 +111,41 @@ public class UserController {
     }
 
     @PutMapping("/editUser")
-    public ResponseEntity<User> editUser(@RequestBody User user) {
-//        String token = request.getHeader("Authorization");
+    public ResponseEntity<User> editUser(@RequestBody UserDto userDto, @RequestHeader("Authorization") String token) {
 
-//        if (token != null && token.startsWith("Bearer ")) {
-//            token = token.substring(7);
-//            String userName = this.jwtUtil.extractUsername(token);
-//
-//            System.out.println(userName);
-//            User u = userService.findByUserName(userName);
-        User users = userService.editUser(user);
-//        }
-        return new ResponseEntity<>(user, HttpStatus.OK);
+        try {
+            if (token.startsWith("Bearer ")) {
+                token = token.substring(7); // Remove "Bearer " prefix
+            }
+
+            String userName = jwtUtil.extractUsername(token);
+
+            User existingUser = userService.findByUserName(userName);
+            if (existingUser == null) {
+                return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+            }
+
+            existingUser.setPhone(userDto.getPhone());
+            existingUser.setWeight(userDto.getWeight());
+            existingUser.setHeight(userDto.getHeight());
+
+            User updatedUser = userService.editUser(existingUser);
+
+            return new ResponseEntity<>(updatedUser, HttpStatus.OK);
+        } catch (Exception e) {
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    @PostMapping("/addMedicalHistory")
+    public ResponseEntity<MedicalHistory> uploadMedHistory(@RequestBody MedicalHistoryDto medicalHistoryDto){
+//        User user = userService.getUserById(medicalHistory.getUser().getId());
+        MedicalHistory medicalHistory = medicalService.getMedicalHistoryByUserId(medicalHistoryDto.getUser().getId());
+
+        if(medicalHistory==null){
+            medicalHistory = medicalService.addMedicalHistory(medicalHistoryDto);
+        }
+
+        return new ResponseEntity<>(medicalHistory, HttpStatus.OK);
     }
 }

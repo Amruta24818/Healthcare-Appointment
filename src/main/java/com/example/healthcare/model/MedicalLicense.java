@@ -1,13 +1,16 @@
 package com.example.healthcare.model;
 
 import jakarta.persistence.*;
+import lombok.Data;
 
 import java.sql.Timestamp;
 
 @Entity
+@Data
 @Table(name = "medical_license")
 public class MedicalLicense {
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private String id;
 
     @ManyToOne
